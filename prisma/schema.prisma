@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Schedule {
+  id              Int      @id @default(autoincrement())
+  course         String
+  totalPages      Int
+  totalDays       Int
+  pagesPerDay     Int
+  fileUrl         String?  // PDF attachment URL
+  preferredTime   String?  // e.g., "Morning (08:00 - 10:00)"
+  dailyTasks      Json     // Array of [{ day: 1, range: "1–20", time: "08:00", completed: false }]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
