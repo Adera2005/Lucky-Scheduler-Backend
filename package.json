@@ -1,16 +1,19 @@
 {
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "groq-sdk": "^1.6.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
     "nodemon": "^3.1.14",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "pdf-parse-fixed": "^1.1.1"
   },
   "name": "backend",
   "version": "1.0.0",
