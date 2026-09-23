@@ -20,9 +20,10 @@ const upload = multer({ storage, fileFilter });
 router.post('/generate',                              protect, upload.single('file'), scheduleController.createSchedule);
 router.get('/',                                       protect, scheduleController.getAllSchedules);
 router.get('/:id',                                    protect, scheduleController.getSchedule);
-router.patch('/:id/complete-session/:sessionIndex',   protect, scheduleController.completeTask);
-router.patch('/:id/reschedule',                       protect, scheduleController.reschedule);
-router.patch('/:id/reschedule-session/:sessionIndex', protect, scheduleController.rescheduleSingleSession);
+
+router.patch('/:id/complete-session/:taskId',         protect, scheduleController.completeTask);
+router.patch('/:id/reschedule-session/:taskId',       protect, scheduleController.rescheduleSingleSession);
+
 router.post('/assistant/ask',                         protect, geminiController.askGemini);
 router.post('/assistant/ask-context',                 protect, geminiController.askWithContext);
 router.get('/youtube/search',                         protect, youtubeController.searchVideos);

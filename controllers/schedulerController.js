@@ -21,7 +21,10 @@ function generateDailyTasks(totalPages, totalDays, studySessions) {
     const pagesForToday = Math.ceil(remainingPages / remainingDays);
 
     let dayPageStart = currentPage;
-    const dayPageEnd = Math.min(dayPageStart + pagesForToday - 1, totalPages);
+    const dayPageEnd = Math.min(
+      dayPageStart + pagesForToday - 1,
+      totalPages
+    );
 
     const numSessions = studySessions.length;
     const pagesPerSession = Math.ceil(pagesForToday / numSessions);
@@ -30,14 +33,17 @@ function generateDailyTasks(totalPages, totalDays, studySessions) {
       if (dayPageStart > dayPageEnd) return;
 
       const slotPageStart = dayPageStart;
-      const slotPageEnd = Math.min(slotPageStart + pagesPerSession - 1, dayPageEnd);
+      const slotPageEnd = Math.min(
+        slotPageStart + pagesPerSession - 1,
+        dayPageEnd
+      );
 
       tasks.push({
-        taskId: crypto.randomUUID(),
         day,
         startTime: session.startTime,
         endTime: session.endTime,
-        pages: `${slotPageStart}–${slotPageEnd}`,
+        pageStart: slotPageStart,
+        pageEnd: slotPageEnd,
         completed: false,
         rescheduled: false
       });
@@ -109,18 +115,41 @@ exports.createSchedule = async (req, res) => {
 
     const pagesPerDay = Math.ceil(Number(totalPages) / Number(totalDays));
 
-    const newSchedule = await prisma.schedule.create({
-      data: {
-        course,
-        totalPages: Number(totalPages),
-        totalDays: Number(totalDays),
-        pagesPerDay,
-        preferredTime: parsedSessions ? JSON.stringify(parsedSessions) : 'morning',
-        fileUrl,
-        pdfText: pdfText ? pdfText.substring(0, 50000) : null,
-        dailyTasks
-      }
-    });
+const newSchedule = await prisma.schedule.create({
+  data: {
+    studentId: req.student.id,
+    course,
+    totalPages: Number(totalPages),
+    totalDays: Number(totalDays),
+    pagesPerDay,
+    fileUrl,
+    pdfText: pdfText ? pdfText.substring(0, 50000) : null,
+
+    sessions: {
+      create: parsedSessions.map((session) => ({
+        startTime: session.startTime,
+        endTime: session.endTime
+      }))
+    },
+
+    tasks: {
+      create: dailyTasks.map((task) => ({
+        day: task.day,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        pageStart: task.pageStart,
+        pageEnd: task.pageEnd,
+        completed: false,
+        rescheduled: false
+      }))
+    }
+  },
+
+  include: {
+    sessions: true,
+    tasks: true
+  }
+});
 
     res.status(201).json({
       status: 'success',
@@ -143,33 +172,71 @@ exports.createSchedule = async (req, res) => {
 exports.getAllSchedules = async (req, res) => {
   try {
     const schedules = await prisma.schedule.findMany({
-      orderBy: { createdAt: 'desc' }
+      where: {
+        studentId: req.student.id
+      },
+      include: {
+        sessions: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
     res.status(200).json({
       status: 'success',
       results: schedules.length,
-      data: { schedules }
+      data: {
+        schedules
+      }
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Failed to fetch schedules.' });
+    console.error('Error fetching schedules:', error.message);
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch schedules.'
+    });
   }
 };
 
 // Get one schedule
 exports.getSchedule = async (req, res) => {
   try {
-    const schedule = await prisma.schedule.findUnique({
-      where: { id: Number(req.params.id) }
+    const schedule = await prisma.schedule.findFirst({
+      where: {
+        id: Number(req.params.id),
+        studentId: req.student.id
+      },
+      include: {
+        sessions: true,
+        tasks: {
+          orderBy: [
+            { day: 'asc' },
+            { startTime: 'asc' }
+          ]
+        }
+      }
     });
 
     if (!schedule) {
-      return res.status(404).json({ status: 'fail', message: 'Schedule not found.' });
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Schedule not found.'
+      });
     }
 
-    res.status(200).json({ status: 'success', data: { schedule } });
+    res.status(200).json({
+      status: 'success',
+      data: { schedule }
+    });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Failed to fetch schedule.' });
+    console.error('Error fetching schedule:', error.message);
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch schedule.'
+    });
   }
 };
 
@@ -178,100 +245,47 @@ exports.completeTask = async (req, res) => {
   try {
     const { id, taskId } = req.params;
 
-    const schedule = await prisma.schedule.findUnique({
-      where: { id: Number(id) }
+    const task = await prisma.studyTask.findFirst({
+      where: {
+        id: Number(taskId),
+        scheduleId: Number(id),
+        schedule: {
+          studentId: req.student.id
+        }
+      }
     });
 
-    if (!schedule) {
-      return res.status(404).json({ status: 'fail', message: 'Schedule not found.' });
-    }
-
-    const updatedTasks = schedule.dailyTasks.map((task) =>
-      task.taskId === taskId ? { ...task, completed: true } : task
-    );
-
-    const updated = await prisma.schedule.update({
-      where: { id: Number(id) },
-      data: { dailyTasks: updatedTasks }
-    });
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Session marked as complete.',
-      data: { schedule: updated }
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Failed to complete task.' });
-  }
-};
-
-// Reschedule all incomplete tasks over extraDays
-exports.reschedule = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { extraDays } = req.body;
-
-    const numExtraDays = Number(extraDays);
-    if (!numExtraDays || numExtraDays < 1) {
-      return res.status(400).json({
+    if (!task) {
+      return res.status(404).json({
         status: 'fail',
-        message: "Please provide 'extraDays' (minimum 1)."
+        message: 'Task not found.'
       });
     }
 
-    const schedule = await prisma.schedule.findUnique({
-      where: { id: Number(id) }
-    });
-
-    if (!schedule) {
-      return res.status(404).json({ status: 'fail', message: 'Schedule not found.' });
-    }
-
-    const incompleteTasks = schedule.dailyTasks.filter((task) => !task.completed);
-
-    if (incompleteTasks.length === 0) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'All tasks are already completed — nothing to reschedule.'
-      });
-    }
-
-    const currentMaxDay = Math.max(...schedule.dailyTasks.map((t) => t.day), 0);
-    const startDay = currentMaxDay + 1;
-
-    const tasksPerDay = Math.ceil(incompleteTasks.length / numExtraDays);
-    
-    const rescheduledTasks = incompleteTasks.map((task, index) => {
-      const addedDayOffset = Math.floor(index / tasksPerDay);
-      const newDay = startDay + addedDayOffset;
-
-      return {
-        ...task,
-        day: newDay,
-        rescheduled: true
-      };
-    });
-
-    const completedTasks = schedule.dailyTasks.filter((task) => task.completed);
-    const updatedTasks = [...completedTasks, ...rescheduledTasks].sort((a, b) => a.day - b.day);
-
-    const newTotalDays = Math.max(...updatedTasks.map((t) => t.day));
-
-    const updated = await prisma.schedule.update({
-      where: { id: Number(id) },
+    const updatedTask = await prisma.studyTask.update({
+      where: {
+        id: task.id
+      },
       data: {
-        totalDays: newTotalDays,
-        dailyTasks: updatedTasks
+        completed: true
       }
     });
 
     res.status(200).json({
       status: 'success',
-      message: `${incompleteTasks.length} missed sessions rescheduled successfully.`,
-      data: { schedule: updated }
+      message: 'Session marked as complete.',
+      data: {
+        task: updatedTask
+      }
     });
+
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Failed to reschedule.' });
+    console.error('Error completing task:', error.message);
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to complete task.'
+    });
   }
 };
 
@@ -280,44 +294,79 @@ exports.rescheduleSingleSession = async (req, res) => {
   try {
     const { id, taskId } = req.params;
 
-    const schedule = await prisma.schedule.findUnique({
-      where: { id: Number(id) }
+    const task = await prisma.studyTask.findFirst({
+      where: {
+        id: Number(taskId),
+        scheduleId: Number(id),
+        schedule: {
+          studentId: req.student.id
+        }
+      }
     });
 
-    if (!schedule) {
-      return res.status(404).json({ status: 'fail', message: 'Schedule not found.' });
+    if (!task) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Task not found.'
+      });
     }
 
-    const lastDay = Math.max(...schedule.dailyTasks.map((task) => task.day), 0);
+    if (task.completed) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Completed tasks cannot be rescheduled.'
+      });
+    }
 
-    const updatedTasks = schedule.dailyTasks.map((task) => {
-      if (task.taskId === taskId && !task.completed) {
-        return {
-          ...task,
-          day: lastDay + 1,
-          rescheduled: true
-        };
+    const lastTask = await prisma.studyTask.findFirst({
+      where: {
+        scheduleId: Number(id)
+      },
+      orderBy: {
+        day: 'desc'
       }
-      return task;
     });
 
-    updatedTasks.sort((a, b) => a.day - b.day);
+    const newDay = (lastTask?.day || 0) + 1;
 
-    const updated = await prisma.schedule.update({
-      where: { id: Number(id) },
+    const updatedTask = await prisma.studyTask.update({
+      where: {
+        id: task.id
+      },
       data: {
-        totalDays: Math.max(...updatedTasks.map((t) => t.day)),
-        dailyTasks: updatedTasks
+        day: newDay,
+        rescheduled: true
+      }
+    });
+
+    const updatedTotalDays = Math.max(
+      Number(task.day),
+      newDay
+    );
+
+    await prisma.schedule.update({
+      where: {
+        id: Number(id)
+      },
+      data: {
+        totalDays: updatedTotalDays
       }
     });
 
     res.status(200).json({
       status: 'success',
       message: 'Session rescheduled successfully.',
-      data: { schedule: updated }
+      data: {
+        task: updatedTask
+      }
     });
 
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Failed to reschedule session.' });
+    console.error('Error rescheduling session:', error.message);
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to reschedule session.'
+    });
   }
 };

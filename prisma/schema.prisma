@@ -8,24 +8,52 @@ datasource db {
 }
 
 model Student {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   name      String
-  email     String   @unique
+  email     String     @unique
   password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  schedules Schedule[]
 }
 
 model Schedule {
-  id            Int      @id @default(autoincrement())
-  course        String
-  totalPages    Int
-  totalDays     Int
-  pagesPerDay   Int
-  preferredTime String   @default("morning")
-  fileUrl       String?
-  pdfText       String?
-  dailyTasks    Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  course      String
+  totalPages  Int
+  totalDays   Int
+  pagesPerDay Int
+  fileUrl     String?
+  pdfText     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student  Student        @relation(fields: [studentId], references: [id])
+  tasks    StudyTask[]
+  sessions StudySession[]
+}
+
+model StudyTask {
+  id          Int      @id @default(autoincrement())
+  scheduleId  Int
+  day         Int
+  startTime   String
+  endTime     String
+  pageStart   Int
+  pageEnd     Int
+  completed   Boolean  @default(false)
+  rescheduled Boolean  @default(false)
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id])
+}
+
+model StudySession {
+  id         Int      @id @default(autoincrement())
+  scheduleId Int
+  startTime  String
+  endTime    String
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id])
 }
