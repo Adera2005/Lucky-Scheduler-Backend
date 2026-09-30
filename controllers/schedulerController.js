@@ -106,7 +106,6 @@ exports.createSchedule = async (req, res) => {
         parsedSessions = [{ startTime: '08:00', endTime: '10:00' }];
       }
     }
-
     const dailyTasks = generateDailyTasks(
       Number(totalPages),
       Number(totalDays),
