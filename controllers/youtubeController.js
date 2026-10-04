@@ -25,10 +25,6 @@ res.status(200).json({
   data:    { videos },
 });
 
-
-
-
-
   } catch (error) {
     console.error('YouTube error:', error.message);
     res.status(500).json({
