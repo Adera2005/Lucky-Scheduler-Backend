@@ -4,6 +4,7 @@ const multer  = require('multer');
 const protect = require('../middleware/authMiddleware');
 const geminiController   = require('../controllers/geminiController');
 const scheduleController = require('../controllers/schedulerController');
+const modifyController   = require('../controllers/modify.js');
 const youtubeController  = require('../controllers/youtubeController');
 
 const storage = multer.diskStorage({
@@ -20,6 +21,8 @@ const upload = multer({ storage, fileFilter });
 router.post('/generate',                              protect, upload.single('file'), scheduleController.createSchedule);
 router.get('/',                                       protect, scheduleController.getAllSchedules);
 router.get('/:id',                                    protect, scheduleController.getSchedule);
+router.patch('/:id',                                  protect, upload.single('file'), modifyController.updateSchedule);
+router.delete('/:id',                                 protect, modifyController.deleteSchedule);
 
 router.patch('/:id/complete-session/:taskId',         protect, scheduleController.completeTask);
 router.patch('/:id/reschedule-session/:taskId',       protect, scheduleController.rescheduleSingleSession);

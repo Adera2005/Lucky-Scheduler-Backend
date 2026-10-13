@@ -2,7 +2,6 @@ const prisma = require('../prisma.js');
 const { PDFDocument } = require('pdf-lib');
 const pdfParse = require('pdf-parse-fixed');
 const fs = require('fs');
-const crypto = require('crypto');
 
 // Generate daily study tasks evenly across sessions and days
 function generateDailyTasks(totalPages, totalDays, studySessions) {
@@ -56,6 +55,8 @@ function generateDailyTasks(totalPages, totalDays, studySessions) {
 
   return tasks;
 }
+
+exports.generateDailyTasks = generateDailyTasks;
 
 // Create schedule
 exports.createSchedule = async (req, res) => {
