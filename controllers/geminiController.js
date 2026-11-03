@@ -69,10 +69,16 @@ exports.askGemini = async (req, res) => {
 
 The student is currently studying: ${course}.
 
-Answer the following question clearly, simply, and with relevance to the question being asked.
+FORMATTING RULES — follow these strictly:
+- Write in clean, readable plain text with proper paragraphs.
+- Use bullet points (•) or numbered lists only when listing multiple items.
+- Use **bold** only to highlight key terms or headings.
+- Do NOT use excessive asterisks, symbols, or markdown decorations.
+- Do NOT repeat the question back to the student.
+- Keep the tone friendly, clear, and academic.
+- Be concise and directly answer the question.
 
-Question:
-${question}`;
+Question: ${question}`;
 
     const { answer, provider } = await getAIResponse(prompt);
 
@@ -125,23 +131,24 @@ exports.askWithContext = async (req, res) => {
       prompt = `You are a helpful study assistant for university students.
 
 The student is studying: ${course}.
-
 They are currently reading pages: ${pages}.
 
-Here is the actual content extracted from their uploaded study material:
-
+Here is the content extracted from their uploaded study material:
 ---
 ${context}
 ---
 
-IMPORTANT:
-- Use the uploaded study material as your main source.
-- Focus specifically on the pages the student asked about: ${pages}.
-- Do not pretend that you have information that is not present in the uploaded material.
-- Explain things clearly and simply because the student is learning the topic.
+FORMATTING RULES — follow these strictly:
+- Write in clean, readable plain text with proper paragraphs.
+- Use bullet points (•) or numbered lists only when listing multiple items.
+- Use **bold** only to highlight key terms or headings.
+- Do NOT use excessive asterisks, symbols, or markdown decorations.
+- Do NOT repeat the question back to the student.
+- Keep the tone friendly, clear, and academic.
+- Limit your response to what is relevant to pages ${pages} of the material.
+- If the answer is not in the material, say so honestly rather than guessing.
 
-Question:
-${question}`;
+Question: ${question}`;
 
     } else {
 
@@ -149,13 +156,17 @@ ${question}`;
       prompt = `You are a helpful study assistant for university students.
 
 The student is currently studying: ${course}.
-
 They are currently reading pages: ${pages}.
 
-Answer the following question clearly and simply.
+FORMATTING RULES — follow these strictly:
+- Write in clean, readable plain text with proper paragraphs.
+- Use bullet points (•) or numbered lists only when listing multiple items.
+- Use **bold** only to highlight key terms or headings.
+- Do NOT use excessive asterisks, symbols, or markdown decorations.
+- Do NOT repeat the question back to the student.
+- Keep the tone friendly, clear, and academic.
 
-Question:
-${question}`;
+Question: ${question}`;
     }
 
     const { answer, provider } = await getAIResponse(prompt);
