@@ -2,10 +2,12 @@ const express = require('express');
 const router  = express.Router();
 const multer  = require('multer');
 const protect = require('../middleware/authMiddleware');
-const geminiController   = require('../controllers/geminiController');
-const scheduleController = require('../controllers/schedulerController');
-const modifyController   = require('../controllers/modify.js');
-const youtubeController  = require('../controllers/youtubeController');
+const geminiController      = require('../controllers/geminiController');
+const scheduleController    = require('../controllers/schedulerController');
+const scheduleReadCtrl      = require('../controllers/scheduleReadController');
+const scheduleTaskCtrl      = require('../controllers/scheduleTaskController');
+const modifyController      = require('../controllers/modify.js');
+const youtubeController     = require('../controllers/youtubeController');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -19,16 +21,16 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 router.post('/generate',                              protect, upload.single('file'), scheduleController.createSchedule);
-router.get('/',                                       protect, scheduleController.getAllSchedules);
-router.get('/:id',                                    protect, scheduleController.getSchedule);
+router.get ('/',                                      protect, scheduleReadCtrl.getAllSchedules);
+router.get ('/:id',                                   protect, scheduleReadCtrl.getSchedule);
 router.patch('/:id',                                  protect, upload.single('file'), modifyController.updateSchedule);
 router.delete('/:id',                                 protect, modifyController.deleteSchedule);
 
-router.patch('/:id/complete-session/:taskId',         protect, scheduleController.completeTask);
-router.patch('/:id/reschedule-session/:taskId',       protect, scheduleController.rescheduleSingleSession);
+router.patch('/:id/complete-session/:taskId',         protect, scheduleTaskCtrl.completeTask);
+router.patch('/:id/reschedule-session/:taskId',       protect, scheduleTaskCtrl.rescheduleSingleSession);
 
-router.post('/assistant/ask',                         protect, geminiController.askGemini);
-router.post('/assistant/ask-context',                 protect, geminiController.askWithContext);
-router.get('/youtube/search',                         protect, youtubeController.searchVideos);
+router.post ('/assistant/ask',                        protect, geminiController.askGemini);
+router.post ('/assistant/ask-context',                protect, geminiController.askWithContext);
+router.get  ('/youtube/search',                       protect, youtubeController.searchVideos);
 
 module.exports = router;

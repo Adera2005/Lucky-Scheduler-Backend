@@ -15,7 +15,8 @@ model Student {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  schedules Schedule[]
+  schedules     Schedule[]
+  notifications Notification[]
 }
 
 model Schedule {
@@ -56,4 +57,20 @@ model StudySession {
   endTime    String
 
   schedule Schedule @relation(fields: [scheduleId], references: [id])
+}
+
+// Stores per-student in-app notifications in the database.
+// Each row belongs to exactly one Student (studentId FK).
+// This prevents cross-user leakage that would happen with
+// a shared localStorage key on a shared device.
+model Notification {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  title     String
+  body      String
+  type      String   @default("info")  // info | reminder | success | warning
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }

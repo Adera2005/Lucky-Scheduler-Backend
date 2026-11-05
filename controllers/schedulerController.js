@@ -339,8 +339,10 @@ exports.rescheduleSingleSession = async (req, res) => {
       }
     });
 
+    // Preserve existing totalDays � only extend if the new day exceeds it
+    const currentSchedule = await prisma.schedule.findUnique({ where: { id: Number(id) } });
     const updatedTotalDays = Math.max(
-      Number(task.day),
+      currentSchedule?.totalDays || 0,
       newDay
     );
 
